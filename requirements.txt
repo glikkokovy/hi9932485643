@@ -1,0 +1,12 @@
+pandas
+numpy
+yfinance
+ccxt
+feedparser
+vaderSentiment
+pandas_datareader
+pytrends
+requests
+pyarrow
+tqdm
+python-dotenv
