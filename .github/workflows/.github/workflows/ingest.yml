@@ -1,0 +1,57 @@
+name: Build Trading Dataset (v3 full)
+
+on:
+  workflow_dispatch:    # avvio manuale dal tab "Actions"
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      TZ: Europe/Rome
+      # UNIVERSO V3 (massima copertura)
+      CRYPTO: "ETH-USD,BNB-USD,SOL-USD,XRP-USD,ADA-USD,LTC-USD,DOGE-USD,MATIC-USD,AVAX-USD,BCH-USD,LINK-USD,ATOM-USD,TRX-USD,NEAR-USD,DOT-USD,UNI-USD,AAVE-USD,MKR-USD,ETC-USD,XLM-USD,FIL-USD,ICP-USD,SHIB-USD,SAND-USD,MANA-USD"
+      EQUITY: "IBIT,FBTC,BITB,ARKB,COIN,MSTR,RIOT,MARA,GBTC,HOOD,HUT,BITF,CLSK,CIFR,IREN,CORZ,WULF,BTBT,BITO,XBTF"
+      FOREX: "EURUSD=X,GBPUSD=X,USDJPY=X,USDCAD=X,AUDUSD=X,USDCHF=X,EURJPY=X,GBPJPY=X"
+      COMMS: "GC=F,CL=F,NG=F,HG=F,PL=F,XAUUSD=X,XAGUSD=X,DX=F"
+      INDEX: "^GSPC,^NDX,^RUT,^VIX,^N225,^HSI,^FTSE,^GDAXI,^FCHI"
+      # Secrets (opzionali): impostali in Settings → Secrets → Actions
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      CRYPTOPANIC_TOKEN: ${{ secrets.CRYPTOPANIC_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11 (stabile per le librerie)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          pip install -r requirements.txt
+
+      - name: Run ingest (v3 full)
+        run: |
+          python data_ingest_and_merge.py \
+            --out-dir ./raw_data \
+            --start 2009-01-01 \
+            --crypto "$CRYPTO" \
+            --equity "$EQUITY" \
+            --forex "$FOREX" \
+            --commodities "$COMMS" \
+            --indexes "$INDEX"
+
+      - name: Pack results (artifact)
+        run: |
+          mkdir -p out
+          tar -czf out/dataset_raw_data.tgz raw_data
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataset_raw_data
+          path: out/dataset_raw_data.tgz
+          retention-days: 10
